@@ -49,13 +49,18 @@ class vmsCreateModel
         ));
 
         if ($req && $req1 && $req2) {
-            $system_id = $this->getLastSystemId();
-            $storage_id = $this->getLastStorageId();
-            $networking_id = $this->getLastNetworkingId();
+            // Add system ID
+            $vm_data['system_id'] = $this->getLastSystemId();
+
+            // Add storage ID
+            $vm_data['storage_id'] = $this->getLastStorageId();
+
+            // Add networking ID
+            $vm_data['networking_id'] = $this->getLastNetworkingId();
 
             var_dump($vm_data);
 
-            return $this->addVmData();
+            //return $this->addVmData($vm_data);
         } else {
             return false;
         }

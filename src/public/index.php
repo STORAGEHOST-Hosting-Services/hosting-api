@@ -10,6 +10,7 @@ require "../routes/users/register/register.php";
 require "../routes/users/login/login.php";
 require "../routes/users/delete/delete.php";
 require "../routes/users/info/info.php";
+require "../routes/users/activation/usersActivationModel.php";
 
 /**
  * Containers
@@ -31,6 +32,8 @@ use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Slim\App;
 use Slim\Container;
+use Users\Info;
+use Users\Register;
 
 $configuration = [
     'settings' => [
@@ -74,7 +77,7 @@ $app->get('/api/user/{id}/containers', function (Request $request, Response $res
     if (isset($args['id']) && (int)$args['id']) {
         $id = $args['id'];
 
-        $containers = (new \Users\Info($id, $this->pdo))->listContainers();
+        $containers = (new Info($id, $this->pdo))->listContainers();
 
         return $response->withStatus(200)->withJson($containers);
     } else {
@@ -86,16 +89,55 @@ $app->get('/api/user/{id}/vms', function (Request $request, Response $response, 
     if (isset($args['id']) && (int)$args['id']) {
         $id = $args['id'];
 
-        $containers = (new \Users\Info($id, $this->pdo))->listVms();
+        $containers = (new Info($id, $this->pdo))->listVms();
 
         return $response->withStatus(200)->withJson($containers);
     } else {
-        return $response->withStatus(400)->withJson('{"error":"Missing required parameter ID"}');
+        return $response->withStatus(400)->withJson('{"error":"missing_parameter_id"}');
     }
 });
 
 $app->post('/api/user/create', function (Request $request, Response $response) {
+    $body = $request->getParsedBody();
 
+    if (isset($body) && !empty($body)) {
+        $result = (new Register((array)$body, $this->pdo))->getFormData();
+        if (is_array($result)) {
+            return $response->withStatus(201)->withJson(json_encode($result));
+        } else {
+            return $response->withStatus(400)->withJson('{"error":' . json_encode($result) . '}');
+        }
+    } else {
+        return $response->withStatus(400)->withJson('{"error":"missing_body"}');
+    }
+});
+
+$app->get('/api/user/activation/email={email}&token={token}', function (Request $request, Response $response, $args) {
+    $email = $args['email'];
+    $token = $args['token'];
+
+    $result = (new Users\usersActivationModel($this->pdo, $email, $token))->activateAccount();
+
+    if ($result == "ok") {
+        return $response->withStatus(200)->withJson('{"success":"account_activated"}');
+    } elseif ($result == "already_enabled") {
+        return $response->withStatus(200)->withJson('{"error":"account_already_enabled"}');
+    } else {
+        return $response->withStatus(400)->withJson('{"error":"bad_request"');
+    }
+});
+$app->delete('/api/user/delete/email={email}', function (Request $request, Response $response, $args) {
+    $email = $args['email'];
+
+    $result = (new Users\Delete($this->pdo, $email))->deleteUser();
+
+    if ($result == "ok") {
+        return $response->withStatus(200)->withJson('{"success":"account_deleted"}');
+    } elseif ($result == "not_exist") {
+        return $response->withStatus(200)->withJson('{"error":"account_does_not_exist"}');
+    } else {
+        return $response->withStatus(400)->withJson('{"error":"bad_request"');
+    }
 });
 
 /**

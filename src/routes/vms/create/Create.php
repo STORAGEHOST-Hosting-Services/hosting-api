@@ -28,11 +28,20 @@ class Create
             if (filter_var($this->vm_data['username'], FILTER_SANITIZE_STRING)) {
                 $this->valid_vm_data['username'] = $this->vm_data['username'];
             } else {
-                $this->error_vm_data = "username";
+                $this->error_vm_data = "bad_username";
             }
 
-            // Add password in the valid array
-            $this->valid_vm_data['password'] = $this->vm_data['password'];
+            // Check if password follows AD security requirements
+            $uppercase = preg_match('@[A-Z]@', $this->vm_data['password']);
+            $lowercase = preg_match('@[a-z]@', $this->vm_data['password']);
+            $number = preg_match('@[0-9]@', $this->vm_data['password']);
+
+            if ($uppercase && $lowercase && $number && strlen($this->vm_data['password']) >= 8) {
+                // Add password in the valid array
+                $this->valid_vm_data['password'] = $this->vm_data['password'];
+            } else {
+                $this->error_vm_data = "bad_password";
+            }
 
             // Check if the provided values match instance type
             $instance_type = $this->vm_data['instance_type'];
@@ -159,10 +168,11 @@ class Create
             var_dump($this->valid_vm_data);
 
             if ($this->error_vm_data !== "") {
-                return $this->error_vm_data;
+                //return $this->error_vm_data;
+                var_dump($this->error_vm_data);
             } else {
                 //var_dump($this->valid_vm_data);
-                return $this->valid_vm_data;
+                //return $this->valid_vm_data;
             }
 
 
@@ -179,7 +189,7 @@ class Create
     private function getIp()
     {
         // Get the IP from the DB table
-         return (new vmsCreateModel($this->pdo))->getIp();
+        return (new vmsCreateModel($this->pdo))->getIp();
     }
 
     private function getName(string $os)
