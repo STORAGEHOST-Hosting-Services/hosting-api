@@ -5,24 +5,26 @@ namespace Users;
 use PDO;
 use usersDeleteModel;
 
+require "model/usersDeleteModel.php";
+
 class Delete
 {
     private PDO $pdo;
-    private string $email;
+    private int $id;
 
     /**
      * delete constructor.
      * @param PDO $pdo
-     * @param string $email
+     * @param int $id
      */
-    public function __construct(PDO $pdo, string $email)
+    public function __construct(PDO $pdo, int $id)
     {
         $this->pdo = $pdo;
-        $this->email = $email;
+        $this->id = $id;
     }
 
     public function deleteUser()
     {
-        return (new usersDeleteModel($this->pdo, $this->email))->deleteUser();
+        return (new usersDeleteModel($this->pdo, $this->id))->getUser();
     }
 }

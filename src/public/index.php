@@ -28,12 +28,28 @@ require "../routes/vms/info/info.php";
 require "../routes/vms/power/power.php";
 require "../routes/vms/delete/delete.php";
 
+/**
+ * Orders
+ */
+require "../routes/orders/Order.php";
+
+/**
+ * Auth
+ */
+require "../config/Auth.php";
+
+use Orders\Order;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Slim\App;
 use Slim\Container;
+use Users\Auth;
 use Users\Info;
+use Users\Login;
+use Users\Logout;
 use Users\Register;
+use Vms\Create;
+use Vms\Delete;
 
 $configuration = [
     'settings' => [
@@ -52,50 +68,372 @@ $container['pdo'] = function () {
 };
 
 $app->get('/api', function (Request $request, Response $response) {
-    $response->getBody()->write("Hello");
-    return $response;
+    $allHeaders = getallheaders();
+    $auth = new Auth($this->pdo, $allHeaders);
+
+    $returnData = [
+        "success" => 0,
+        "status" => 401,
+        "message" => "Unauthorized"
+    ];
+
+    if ($auth->isAuth()) {
+        $returnData = $auth->isAuth();
+    }
+
+    return $response->withStatus(200)->withJson($returnData);
 });
 
 /**
  * ---------------------------------------------------------------------------------------------------------------------
- * USER SECTION
+ * AUTHENTICATED ACTIONS
  * ---------------------------------------------------------------------------------------------------------------------
  */
 
+/**
+ * -----------------------------------------------------------------------
+ * USER SECTION
+ * -----------------------------------------------------------------------
+ */
+
+// Get all users
+$app->get('/api/users', function (Request $request, Response $response) {
+    $headers = getallheaders();
+    $auth = new Auth($this->pdo, $headers);
+
+    if ($auth->isAuth()) {
+        return $response->withStatus(200)->withJson((new Info(0, $this->pdo))->listUsers());
+    } else {
+        return $response->withStatus(401)->withJson(array(
+            'status' => 'error',
+            'message' => 'unauthorized',
+            'date' => time()
+        ));
+    }
+});
+
 $app->get('/api/user/{id}', function (Request $request, Response $response, $args) {
-    if (isset($args['id'])) {
-        $id = $args['id'];
-        var_dump($id);
-    } else {
-        $response->withStatus(400)->withJson('{"error":"Missing required parameter ID"}');
-    }
+    $headers = getallheaders();
+    $auth = new Auth($this->pdo, $headers);
 
-    return $response;
+    if ($auth->isAuth()) {
+        if (isset($args['id'])) {
+            $id = $args['id'];
+
+            if (is_numeric($id)) {
+                return $response->withStatus(200)->withJson((new Info($id, $this->pdo))->listUserInfo());
+
+            } else {
+                return $response->withStatus(400)->withJson(
+                    array(
+                        'status' => 'error',
+                        'message' => "missing_parameter_id",
+                        'date' => time()
+                    ));
+            }
+        } else {
+            $response->withStatus(400)->withJson(
+                array(
+                    'status' => 'error',
+                    'message' => "missing_parameter_id",
+                    'date' => time()
+                ));
+        }
+
+        return $response;
+    } else {
+        return $response->withStatus(401)->withJson(array(
+            'status' => 'error',
+            'message' => 'unauthorized',
+            'date' => time()
+        ));
+    }
 });
 
-$app->get('/api/user/{id}/containers', function (Request $request, Response $response, $args) {
-    if (isset($args['id']) && (int)$args['id']) {
-        $id = $args['id'];
-
-        $containers = (new Info($id, $this->pdo))->listContainers();
-
-        return $response->withStatus(200)->withJson($containers);
-    } else {
-        return $response->withStatus(400)->withJson('{"error":"Missing required parameter ID"}');
-    }
-});
+/**$app->get('/api/user/{id}/containers', function (Request $request, Response $response, $args) {
+ * if (isset($args['id']) && (int)$args['id']) {
+ * $id = $args['id'];
+ *
+ * $containers = (new Info($id, $this->pdo))->listContainers();
+ *
+ * return $response->withStatus(200)->withJson($containers);
+ * } else {
+ * return $response->withStatus(400)->withJson('{"error":"Missing required parameter ID"}');
+ * }
+ * });*/
 
 $app->get('/api/user/{id}/vms', function (Request $request, Response $response, $args) {
-    if (isset($args['id']) && (int)$args['id']) {
-        $id = $args['id'];
+    $headers = getallheaders();
+    $auth = new Auth($this->pdo, $headers);
 
-        $containers = (new Info($id, $this->pdo))->listVms();
+    if ($auth->isAuth()) {
+        if (isset($args['id']) && (int)$args['id']) {
+            $id = $args['id'];
 
-        return $response->withStatus(200)->withJson($containers);
+            $containers = (new Info($id, $this->pdo))->listVms();
+
+            return $response->withStatus(200)->withJson($containers);
+        } else {
+            return $response->withStatus(400)->withJson(
+                array(
+                    'status' => 'error',
+                    'message' => "missing_parameter_id",
+                    'timestamp' => time()
+                ));
+        }
     } else {
-        return $response->withStatus(400)->withJson('{"error":"missing_parameter_id"}');
+        return $response->withStatus(401)->withJson(array(
+            'status' => 'error',
+            'message' => 'unauthorized',
+            'date' => time()
+        ));
     }
 });
+
+$app->delete('/api/user/delete/{id}', function (Request $request, Response $response, $args) {
+    $headers = getallheaders();
+    $auth = new Auth($this->pdo, $headers);
+
+    if ($auth->isAuth()) {
+        $id = $args['id'];
+
+        $result = (new Users\Delete($this->pdo, $id))->deleteUser();
+
+        if (strpos($result, "Integrity constraint violation")) {
+            return $response->withStatus(400)->withJson(array(
+                'status' => 'error',
+                'message' => 'user_has_orders',
+                'date' => time()
+            ));
+        } elseif ($result['status'] == 'success') {
+            return $response->withStatus(200)->withJson($result);
+
+        } else {
+            return $response->withStatus(404)->withJson($result);
+        }
+    } else {
+        return $response->withStatus(401)->withJson(array(
+            'status' => 'error',
+            'message' => 'unauthorized',
+            'date' => time()
+        ));
+    }
+});
+
+/**
+ * -----------------------------------------------------------------------
+ * ORDER SECTION
+ * -----------------------------------------------------------------------
+ */
+
+$app->post('/api/order/create', function (Request $request, Response $response) {
+    $headers = getallheaders();
+    $auth = new Auth($this->pdo, $headers);
+
+    if ($auth->isAuth()) {
+        $user_data = $auth->isAuth();
+        $body = $request->getParsedBody();
+
+        if (isset($body) && !empty($body)) {
+            $result = (new Order((array)$body, (array)$user_data, $this->pdo))->validateData();
+            if (is_array($result)) {
+                return $response->withStatus(201)->withJson($result);
+            } else {
+                return $response->withStatus(400)->withJson(array(
+                    'status' => 'error',
+                    'message' => $result,
+                    'timestamp' => time()
+                ));
+            }
+        } else {
+            return $response->withStatus(400)->withJson(array(
+                'status' => 'error',
+                'message' => 'missing_body',
+                'timestamp' => time()
+            ));
+        }
+    } else {
+        return $response->withStatus(401)->withJson(array(
+            'status' => 'error',
+            'message' => 'unauthorized',
+            'date' => time()
+        ));
+    }
+});
+
+/**
+ * -----------------------------------------------------------------------
+ * VM SECTION
+ * -----------------------------------------------------------------------
+ */
+
+$app->post('/api/vm/create', function (Request $request, Response $response) {
+    $headers = getallheaders();
+    $auth = new Auth($this->pdo, $headers);
+
+    if ($auth->isAuth()) {
+        // Get user data
+        $user_data = $auth->isAuth();
+        $body = $request->getParsedBody();
+
+        if (isset($body) && !empty($body)) {
+            $result = (new Create((array)$body, (array)$user_data, $this->pdo))->validateData();
+
+            if (array_search('error', $result)) {
+                return $response->withStatus(400)->withJson(
+                    array(
+                        'status' => 'error',
+                        'message' => $result,
+                        'timestamp' => time()
+                    ));
+            } else {
+                return $response->withStatus(201)->withJson(
+                    array(
+                        'status' => 'success',
+                        'data' => $result,
+                        'timestamp' => time()
+                    ));
+            }
+        } else {
+            return $response->withStatus(400)->withJson(
+                array(
+                    'status' => 'error',
+                    'message' => "missing_body",
+                    'timestamp' => time()
+                ));
+        }
+    } else {
+        return $response->withStatus(401)->withJson(array(
+            'status' => 'error',
+            'message' => 'unauthorized',
+            'date' => time()
+        ));
+    }
+});
+
+$app->get('/api/vm/{id}/info', function (Request $request, Response $response, $args) {
+    $headers = getallheaders();
+    $auth = new Auth($this->pdo, $headers);
+
+    if ($auth->isAuth()) {
+        if (isset($args['id']) && (int)$args['id']) {
+            $id = $args['id'];
+
+            $vms = (new \Vms\Info($id, $this->pdo))->listVms();
+
+            return $response->withStatus(200)->withJson($vms);
+        } else {
+            return $response->withStatus(400)->withJson(
+                array(
+                    'status' => 'error',
+                    'message' => "missing_parameter_id",
+                    'timestamp' => time()
+                ));
+        }
+    } else {
+        return $response->withStatus(401)->withJson(array(
+            'status' => 'error',
+            'message' => 'unauthorized',
+            'date' => time()
+        ));
+    }
+});
+
+$app->patch('/api/vm/{id}/power', function (Request $request, Response $response, $args) {
+    $headers = getallheaders();
+    $auth = new Auth($this->pdo, $headers);
+
+    if ($auth->isAuth()) {
+        if (is_numeric($args['id'])) {
+        } else {
+            return $response->withStatus(400)->withJson(array(
+                'status' => 'error',
+                'message' => 'missing_parameter_id',
+                'date' => time()
+            ));
+        }
+
+    } else {
+        return $response->withStatus(401)->withJson(array(
+            'status' => 'error',
+            'message' => 'unauthorized',
+            'date' => time()
+        ));
+    }
+});
+
+$app->delete('/api/vm/{id}/delete', function (Request $request, Response $response, $args) {
+    $headers = getallheaders();
+    $auth = new Auth($this->pdo, $headers);
+
+    if ($auth->isAuth()) {
+        if (is_numeric($args['id'])) {
+            $user_data = $auth->isAuth();
+            $data = (new Delete($this->pdo, (int)$args['id'], (array)$user_data))->deleteVm();
+            var_dump($data);
+        } else {
+            return $response->withStatus(400)->withJson(array(
+                'status' => 'error',
+                'message' => 'missing_parameter_id',
+                'date' => time()
+            ));
+        }
+
+    } else {
+        return $response->withStatus(401)->withJson(array(
+            'status' => 'error',
+            'message' => 'unauthorized',
+            'date' => time()
+        ));
+    }
+});
+
+/**
+ * ---------------------------------------------------------------------------------------------------------------------
+ * DOCKER SECTION
+ * ---------------------------------------------------------------------------------------------------------------------
+ */
+
+/**
+ * $app->post('/api/docker/create', function (Request $request, Response $response) {
+ *
+ * });
+ *
+ * $app->get('/api/docker/{id}/info', function (Request $request, Response $response, $args) {
+ * if (isset($args['id']) && (int)$args['id']) {
+ * $id = $args['id'];
+ *
+ * $containers = (new \Containers\Info($id, $this->pdo))->listContainers();
+ *
+ * return $response->withStatus(200)->withJson($containers);
+ * } else {
+ * return $response->withStatus(400)->withJson('{"error":"Missing required parameter ID"}');
+ * }
+ * });
+ *
+ * $app->patch('/api/docker/{id}/power', function (Request $request, Response $response, $args) {
+ *
+ * });
+ *
+ * $app->delete('/api/docker/{id}/delete', function (Request $request, Response $response, $args) {
+ *
+ * });*/
+
+/**
+ * ---------------------------------------------------------------------------------------------------------------------
+ */
+
+/**
+ * ---------------------------------------------------------------------------------------------------------------------
+ * UNAUTHENTICATED ACTIONS
+ * ---------------------------------------------------------------------------------------------------------------------
+ */
+
+/**
+ * -----------------------------------------------------------------------
+ * USER SECTION
+ * -----------------------------------------------------------------------
+ */
 
 $app->post('/api/user/create', function (Request $request, Response $response) {
     $body = $request->getParsedBody();
@@ -103,12 +441,20 @@ $app->post('/api/user/create', function (Request $request, Response $response) {
     if (isset($body) && !empty($body)) {
         $result = (new Register((array)$body, $this->pdo))->getFormData();
         if (is_array($result)) {
-            return $response->withStatus(201)->withJson(json_encode($result));
+            return $response->withStatus(201)->withJson($result);
         } else {
-            return $response->withStatus(400)->withJson('{"error":' . json_encode($result) . '}');
+            return $response->withStatus(400)->withJson(array(
+                'status' => 'error',
+                'message' => $result,
+                'timestamp' => time()
+            ));
         }
     } else {
-        return $response->withStatus(400)->withJson('{"error":"missing_body"}');
+        return $response->withStatus(400)->withJson(array(
+            'status' => 'error',
+            'message' => 'missing_body',
+            'timestamp' => time()
+        ));
     }
 });
 
@@ -119,101 +465,54 @@ $app->get('/api/user/activation/email={email}&token={token}', function (Request 
     $result = (new Users\usersActivationModel($this->pdo, $email, $token))->activateAccount();
 
     if ($result == "ok") {
-        return $response->withStatus(200)->withJson('{"success":"account_activated"}');
+        return $response->withStatus(200)->withJson(
+            array(
+                'status' => 'success',
+                'message' => "account_activated",
+                'timestamp' => time()
+            ));
     } elseif ($result == "already_enabled") {
-        return $response->withStatus(200)->withJson('{"error":"account_already_enabled"}');
+        return $response->withStatus(200)->withJson(
+            array(
+                'status' => 'error',
+                'message' => "account_already_enabled",
+                'timestamp' => time()
+            ));
     } else {
-        return $response->withStatus(400)->withJson('{"error":"bad_request"');
-    }
-});
-$app->delete('/api/user/delete/email={email}', function (Request $request, Response $response, $args) {
-    $email = $args['email'];
-
-    $result = (new Users\Delete($this->pdo, $email))->deleteUser();
-
-    if ($result == "ok") {
-        return $response->withStatus(200)->withJson('{"success":"account_deleted"}');
-    } elseif ($result == "not_exist") {
-        return $response->withStatus(200)->withJson('{"error":"account_does_not_exist"}');
-    } else {
-        return $response->withStatus(400)->withJson('{"error":"bad_request"');
+        return $response->withStatus(400)->withJson(
+            array(
+                'status' => 'error',
+                'message' => "bad_request",
+                'timestamp' => time()
+            ));
     }
 });
 
-/**
- * ---------------------------------------------------------------------------------------------------------------------
- * DOCKER SECTION
- * ---------------------------------------------------------------------------------------------------------------------
- */
-
-$app->post('/api/docker/create', function (Request $request, Response $response) {
-
-});
-
-$app->get('/api/docker/{id}/info', function (Request $request, Response $response, $args) {
-    if (isset($args['id']) && (int)$args['id']) {
-        $id = $args['id'];
-
-        $containers = (new \Containers\Info($id, $this->pdo))->listContainers();
-
-        return $response->withStatus(200)->withJson($containers);
-    } else {
-        return $response->withStatus(400)->withJson('{"error":"Missing required parameter ID"}');
-    }
-});
-
-$app->patch('/api/docker/{id}/power', function (Request $request, Response $response, $args) {
-
-});
-
-$app->delete('/api/docker/{id}/delete', function (Request $request, Response $response, $args) {
-
-});
-
-/**
- * ---------------------------------------------------------------------------------------------------------------------
- * VM SECTION
- * ---------------------------------------------------------------------------------------------------------------------
- */
-
-$app->post('/api/vm/create', function (Request $request, Response $response) {
+$app->post('/api/user/login', function (Request $request, Response $response) {
     $body = $request->getParsedBody();
 
     if (isset($body) && !empty($body)) {
-        $result = (new \Vms\Create((array)$body, $this->pdo))->validateData();
-        if (is_array($result)) {
-            $new_vm_data = (new \Vms\Create((array)$result, $this->pdo))->createVm();
-            return $response->withStatus(201)->withJson('{"success":' . $new_vm_data . ' }');
+        $result = (new Login((array)$body, $this->pdo))->getFormData();
+        if (is_array($result) && in_array('success', $result)) {
+            return $response->withStatus(200)->withJson($result);
         } else {
-            return $response->withStatus(400)->withJson('{"error": "' . $result . '"}');
+            return $response->withStatus(400)->withJson($result);
         }
     } else {
-        return $response->withStatus(400)->withJson('{"error":"Missing body"}');
+        return $response->withStatus(400)->withJson(array(
+            'status' => 'error',
+            'message' => 'missing_body',
+            'timestamp' => time()
+        ));
     }
-});
-
-$app->get('/api/vm/{id}/info', function (Request $request, Response $response, $args) {
-    if (isset($args['id']) && (int)$args['id']) {
-        $id = $args['id'];
-
-        $containers = (new \Vms\Info($id, $this->pdo))->listVms();
-
-        return $response->withStatus(200)->withJson($containers);
-    } else {
-        return $response->withStatus(400)->withJson('{"error":"Missing required parameter ID"}');
-    }
-});
-
-$app->patch('/api/vm/{id}/power', function (Request $request, Response $response, $args) {
-
-});
-
-$app->delete('/api/vm/{id}/delete', function (Request $request, Response $response, $args) {
-
 });
 
 /**
  * ---------------------------------------------------------------------------------------------------------------------
  */
 
-$app->run();
+try {
+    $app->run();
+} catch (Throwable $e) {
+    echo "Cannot run the app! " . $e->getMessage();
+}

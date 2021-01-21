@@ -2,14 +2,15 @@
 
 namespace Vms;
 
+use PDO;
+
 class vmsInfoModel
 {
-    public function listVms(int $id, \PDO $pdo)
+    public function listVms(int $id, PDO $pdo): array
     {
-        $req = $pdo->prepare('SELECT * FROM hosting.vms LEFT JOIN "system" ON hosting.vms.id = hosting."system".id WHERE "vms".id = :id');
-        $req->bindParam(':id', $id);
+        $req = $pdo->prepare('SELECT * FROM storagehost_hosting.vm');
         $req->execute();
 
-        return $req->fetchAll(\PDO::FETCH_ASSOC);
+        return $req->fetchAll(PDO::FETCH_ASSOC);
     }
 }

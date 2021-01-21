@@ -4,7 +4,11 @@
     <file url="file://$PROJECT_DIR$/src/routes/containers/info/model/containersInfoModel.php" dialect="MySQL" />
     <file url="file://$PROJECT_DIR$/src/routes/users/activation/usersActivationModel.php" dialect="MySQL" />
     <file url="file://$PROJECT_DIR$/src/routes/users/delete/model/usersDeleteModel.php" dialect="MySQL" />
+    <file url="file://$PROJECT_DIR$/src/routes/users/info/model/userInfoModel.php" dialect="MySQL" />
+    <file url="file://$PROJECT_DIR$/src/routes/users/login/model/usersLoginModel.php" dialect="GenericSQL" />
     <file url="file://$PROJECT_DIR$/src/routes/users/register/model/usersRegisterModel.php" dialect="MySQL" />
     <file url="file://$PROJECT_DIR$/src/routes/vms/create/model/vmsCreateModel.php" dialect="MySQL" />
+    <file url="file://$PROJECT_DIR$/src/routes/vms/info/model/vmsInfoModel.php" dialect="MySQL" />
+    <file url="PROJECT" dialect="MySQL" />
   </component>
 </project>

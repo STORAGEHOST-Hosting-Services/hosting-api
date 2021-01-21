@@ -2,6 +2,7 @@
 
 namespace Vms;
 
+use Config;
 use PDO;
 
 class vmsCreateModel
@@ -15,81 +16,91 @@ class vmsCreateModel
 
     public function createVm(array $vm_data)
     {
-        //var_dump($vm_data);
-        // Add VM data into the specified tables
+        // Declare variables
+        $hostname = $this->getName($vm_data['os']);
+        $ip = $this->getIp();
 
-        // Add system data
-        $req = $this->pdo->prepare('INSERT INTO hosting.`system`(instance_type, os, hypervisor_name) VALUES (:instance_type, :os, :hypervisor_name)');
+        $req = $this->pdo->prepare('INSERT INTO storagehost_hosting.vm(hostname, ip, power_status, os, instance_type, order_id) VALUES (:hostname, :ip, :power_status, :os, :instance_type, :order_id)');
         $req->execute(array(
-            ':instance_type' => $vm_data['instance_type'],
+            ':hostname' => $hostname,
+            ':ip' => $ip,
+            ':power_status' => false,
             ':os' => $vm_data['os'],
-            ':hypervisor_name' => "swphyvsor01"
-        ));
-
-        // Get the last ID
-        $id = $this->pdo->lastInsertId();
-
-        // Add storage data
-        $req1 = $this->pdo->prepare('INSERT INTO hosting.storage(instance_name) VALUES (:instance_name)');
-        $req1->execute(array(
-            ':instance_name' => $vm_data['hostname']
-        ));
-
-        // Add a new entry into the ip table
-        $req3 = $this->pdo->prepare('INSERT INTO hosting.ip(ip, assigned_instance_id) VALUES (:ip, :assigned_instance_id)');
-        $req3->execute(array(
-            ':ip' => $vm_data['ip'],
-            ':assigned_instance_id' => $id
-        ));
-
-        // Add networking data
-        $req2 = $this->pdo->prepare('INSERT INTO hosting.networking(ip) VALUES (:ip)');
-        $req2->execute(array(
-            ':ip' => $vm_data['ip']
-        ));
-
-        if ($req && $req1 && $req2) {
-            // Add system ID
-            $vm_data['system_id'] = $this->getLastSystemId();
-
-            // Add storage ID
-            $vm_data['storage_id'] = $this->getLastStorageId();
-
-            // Add networking ID
-            $vm_data['networking_id'] = $this->getLastNetworkingId();
-
-            var_dump($vm_data);
-
-            //return $this->addVmData($vm_data);
-        } else {
-            return false;
-        }
-    }
-
-    private function addVmData(array $vm_data)
-    {
-        $req = $this->pdo->prepare('INSERT INTO hosting.vms(hostname, username, password, instance_type, state, system_id, storage_id, networking_id, user_id) VALUES (:hostname, :username, :password, :instance_type, :state, :system_id, :storage_id, :networking_id, :user_id)');
-        if ($req->execute(array(
-            ':hostname' => $vm_data['hostname'],
-            ':username' => $vm_data['username'],
-            ':password' => password_hash($vm_data['password'], PASSWORD_DEFAULT),
             ':instance_type' => $vm_data['instance_type'],
-            ':state' => false,
-            ':system_id' => $vm_data['system_id'],
-            ':storage_id' => $vm_data['storage_id'],
-            ':networking_id' => $vm_data['networking_id'],
-            ':user_id' => $vm_data['user_id'],
-        ))) {
-            //return $this->addVmData($vm_data);
+            ':order_id' => $vm_data['order_id']
+        ));
+
+        if ($req) {
+            if ($vm_data['os'] == 'winsrv') {
+                $hostname_status = $this->pdo->prepare('INSERT INTO storagehost_hosting.windows_hostname(name) VALUES (:name)');
+                $hostname_status->bindParam(':name', $hostname);
+                $hostname_status->execute();
+            } else {
+                $hostname_status = $this->pdo->prepare('INSERT INTO storagehost_hosting.linux_hostname(name) VALUES (:name)');
+                $hostname_status->bindParam(':name', $hostname);
+                $hostname_status->execute();
+            }
+
+            // Get the ID of the inserted instance
+            $last_id = $this->pdo->lastInsertId();
+
+            if ($vm_data['os'] == 'winsrv') {
+                $ip_data = array(
+                    'linux' => null,
+                    'windows' => $last_id
+                );
+            } else {
+                $ip_data = array(
+                    'linux' => $last_id,
+                    'windows' => null
+                );
+            }
+
+            if ($hostname_status) {
+                $ip_status = $this->pdo->prepare('INSERT INTO storagehost_hosting.ip(ip, linux_instance_id, windows_instance_id) VALUES (:ip, :linux_instance_id, :windows_instance_id)');
+                $ip_status->execute(array(
+                    ':ip' => $ip,
+                    ':linux_instance_id' => 1,
+                    ':windows_instance_id' => 1
+                ));
+                if ($ip_status) {
+                    return array(
+                        'status' => 'success',
+                        'data' => $this->fetchVmData(),
+                        'date' => time()
+                    );
+                } else {
+                    return array(
+                        'status' => 'error',
+                        'message' => 'vm_creation_failed',
+                        'step' => 1,
+                        'date' => time()
+                    );
+                }
+            } else {
+                return array(
+                    'status' => 'error',
+                    'message' => 'vm_creation_failed',
+                    'step' => 3,
+                    'date' => time()
+                );
+            }
         } else {
             // An error occurred
-            return false;
+            return array(
+                'status' => 'error',
+                'message' => 'vm_creation_failed',
+                'step' => 2,
+                'date' => time()
+            );
         }
     }
 
-    public function getName(string $os)
+    private
+    function getName(string $os): string
     {
         if ($os == "debian10" || $os == "centos8" || $os == "ubuntu2004") {
+            // Linux
             $req = $this->pdo->prepare('SELECT * FROM linux_hostname ORDER BY id DESC LIMIT 1');
             $req->execute();
 
@@ -98,7 +109,7 @@ class vmsCreateModel
             // Increment the instance name by adding 1 to the number at the end
             $hostname = "";
 
-            $id = (int)$last_linux_hostname['id'];
+            $id = (int)substr($last_linux_hostname['name'], 9);
             $id = $id + 1;
 
             if ($id < 10) {
@@ -109,6 +120,7 @@ class vmsCreateModel
 
             return $hostname;
         } else {
+            // Windows
             $req1 = $this->pdo->prepare('SELECT * FROM windows_hostname ORDER BY id DESC LIMIT 1');
             $req1->execute();
 
@@ -131,7 +143,8 @@ class vmsCreateModel
 
     }
 
-    public function getIp()
+    private
+    function getIp(): string
     {
         $req = $this->pdo->prepare('SELECT * FROM ip ORDER BY id DESC LIMIT 1');
         $req->execute();
@@ -141,31 +154,12 @@ class vmsCreateModel
         $last_ip = $last_ip + 1;
 
         // Add the newly generated IP end to the core
-        return "172.16.1." . $last_ip;
+        return Config::SUBNET . $last_ip;
 
     }
 
-    private function getLastSystemId()
+    private function fetchVmData()
     {
-        $req = $this->pdo->prepare('SELECT * FROM hosting.`system` ORDER BY id DESC LIMIT 1');
-        $req->execute();
 
-        return $req->fetch(PDO::FETCH_ASSOC)['id'];
-    }
-
-    private function getLastStorageId()
-    {
-        $req = $this->pdo->prepare('SELECT * FROM hosting.storage ORDER BY id DESC LIMIT 1');
-        $req->execute();
-
-        return $req->fetch(PDO::FETCH_ASSOC)['id'];
-    }
-
-    private function getLastNetworkingId()
-    {
-        $req = $this->pdo->prepare('SELECT * FROM hosting.networking ORDER BY id DESC LIMIT 1');
-        $req->execute();
-
-        return $req->fetch(PDO::FETCH_ASSOC)['id'];
     }
 }

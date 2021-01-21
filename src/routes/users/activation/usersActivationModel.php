@@ -37,7 +37,7 @@ class usersActivationModel
 
         $result = "";
         // Get the key corresponding to the email provided
-        $stmt = $this->pdo->prepare("SELECT activation_key, activation FROM hosting.user WHERE email = :email");
+        $stmt = $this->pdo->prepare("SELECT activation_key, activation FROM storagehost_hosting.user WHERE email = :email");
         if ($stmt->execute(
                 array(
                     ':email' => $this->email,
@@ -55,7 +55,7 @@ class usersActivationModel
         } else {
             if ($this->token == $key_db) {
                 // The program should then update the activation status in the DB
-                $stmt = $this->pdo->prepare('UPDATE hosting.user SET activation = 1 WHERE email = :email');
+                $stmt = $this->pdo->prepare('UPDATE storagehost_hosting.user SET activation = 1 WHERE email = :email');
                 $stmt->bindParam(':email', $this->email);
                 $stmt->execute();
 
