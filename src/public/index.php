@@ -1,42 +1,42 @@
 <?php
 
-require "../../vendor/autoload.php";
-require "../config/SQLConnection.php";
+require __DIR__."/../../vendor/autoload.php";
+require __DIR__."/../config/SQLConnection.php";
 
 /**
  * Users
  */
-require "../routes/users/register/register.php";
-require "../routes/users/login/login.php";
-require "../routes/users/delete/delete.php";
-require "../routes/users/info/info.php";
-require "../routes/users/activation/usersActivationModel.php";
+require __DIR__."/../routes/users/register/register.php";
+require __DIR__."/../routes/users/login/login.php";
+require __DIR__."/../routes/users/delete/delete.php";
+require __DIR__."/../routes/users/info/info.php";
+require __DIR__."/../routes/users/activation/usersActivationModel.php";
 
 /**
  * Containers
  */
-require "../routes/containers/create/create.php";
-require "../routes/containers/info/info.php";
-require "../routes/containers/power/power.php";
-require "../routes/containers/delete/delete.php";
+require __DIR__."/../routes/containers/create/create.php";
+require __DIR__."/../routes/containers/info/info.php";
+require __DIR__."/../routes/containers/power/power.php";
+require __DIR__."/../routes/containers/delete/delete.php";
 
 /**
  * VMs
  */
-require "../routes/vms/create/create.php";
-require "../routes/vms/info/info.php";
-require "../routes/vms/power/power.php";
-require "../routes/vms/delete/delete.php";
+require __DIR__."/../routes/vms/create/create.php";
+require __DIR__."/../routes/vms/info/info.php";
+require __DIR__."/../routes/vms/power/power.php";
+require __DIR__."/../routes/vms/delete/delete.php";
 
 /**
  * Orders
  */
-require "../routes/orders/Order.php";
+require __DIR__."/../routes/orders/Order.php";
 
 /**
  * Auth
  */
-require "../config/Auth.php";
+require __DIR__."/../config/Auth.php";
 
 use Orders\Order;
 use Psr\Http\Message\ResponseInterface as Response;
@@ -46,7 +46,6 @@ use Slim\Container;
 use Users\Auth;
 use Users\Info;
 use Users\Login;
-use Users\Logout;
 use Users\Register;
 use Vms\Create;
 use Vms\Delete;
