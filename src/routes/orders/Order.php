@@ -11,7 +11,6 @@ namespace Orders;
 include "model/orderModel.php";
 
 use PDO;
-use Users\usersRegisterModel;
 
 class Order
 {

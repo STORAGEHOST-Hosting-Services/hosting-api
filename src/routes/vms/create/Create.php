@@ -84,13 +84,13 @@ class Create
         }
     }
 
-    private function getOrderExistence()
-    {
-
-    }
-
     private function createVm()
     {
         return (new vmsCreateModel($this->pdo))->createVm($this->valid_vm_data);
+    }
+
+    private function getOrderExistence()
+    {
+
     }
 }

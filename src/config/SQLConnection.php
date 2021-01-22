@@ -13,19 +13,6 @@ class SQLConnection
     private $dbname;
 
     /**
-     * Get data from the INI configuration file and assign them to local vars
-     */
-
-    private function getCrendentials()
-    {
-        $db = parse_ini_file('db.ini');
-        $this->username = $db['user'];
-        $this->password = $db['password'];
-        $this->host = $db['host'];
-        $this->dbname = $db['dbname'];
-    }
-
-    /**
      * return in instance of the PDO object that connects to the SQLite database
      * @return PDO
      */
@@ -38,5 +25,18 @@ class SQLConnection
             $this->pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
         }
         return $this->pdo;
+    }
+
+    /**
+     * Get data from the INI configuration file and assign them to local vars
+     */
+
+    private function getCrendentials()
+    {
+        $db = parse_ini_file('db.ini');
+        $this->username = $db['user'];
+        $this->password = $db['password'];
+        $this->host = $db['host'];
+        $this->dbname = $db['dbname'];
     }
 }

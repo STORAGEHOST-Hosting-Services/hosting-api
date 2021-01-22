@@ -2,7 +2,7 @@
 
 namespace Containers;
 
-require __DIR__."/model/containersInfoModel.php";
+require __DIR__ . "/model/containersInfoModel.php";
 
 class Info
 {

@@ -44,47 +44,6 @@ class vmsDeleteModel
     }
 
     /**
-     * Method used to delete a VM from the DB.
-     * @return array|boolean
-     */
-    private function deleteVm()
-    {
-        try {
-            $req = $this->pdo->prepare("DELETE FROM storagehost_hosting.vm WHERE id = :id");
-            $req->bindParam(':id', $this->id);
-            $req->execute();
-
-            if ($req) {
-                // Delete the VM from the hypervisor
-                return $this->deleteVmFromHypervisor();
-            } else {
-                return array(
-                    'status' => 'error',
-                    'message' => 'error_while_deleting_vm',
-                    'date' => time()
-                );
-            }
-        } catch (PDOException $e) {
-            return $e->getMessage();
-        }
-    }
-
-    private function deleteVmFromHypervisor(): array
-    {
-        // Add the VM data in the text file
-        $handle  = fopen('../routes/Service/VmInteraction/delete/vm_deletion.txt', 'a+');
-        if (flock($handle, LOCK_EX)) {
-            
-        }
-
-        return array(
-            'status' => 'success',
-            'message' => 'vm_deleted',
-            'date' => time()
-        );
-    }
-
-    /**
      * Method that will send an email to user when the insert pass is successful.
      * @param array $data
      */
@@ -140,5 +99,46 @@ class vmsDeleteModel
         } catch (Exception $e) {
             echo "Message could not be sent. Mailer error: {$mail->ErrorInfo}";
         }
+    }
+
+    /**
+     * Method used to delete a VM from the DB.
+     * @return array|boolean
+     */
+    private function deleteVm()
+    {
+        try {
+            $req = $this->pdo->prepare("DELETE FROM storagehost_hosting.vm WHERE id = :id");
+            $req->bindParam(':id', $this->id);
+            $req->execute();
+
+            if ($req) {
+                // Delete the VM from the hypervisor
+                return $this->deleteVmFromHypervisor();
+            } else {
+                return array(
+                    'status' => 'error',
+                    'message' => 'error_while_deleting_vm',
+                    'date' => time()
+                );
+            }
+        } catch (PDOException $e) {
+            return $e->getMessage();
+        }
+    }
+
+    private function deleteVmFromHypervisor(): array
+    {
+        // Add the VM data in the text file
+        $handle = fopen('../routes/Service/VmInteraction/delete/vm_deletion.txt', 'a+');
+        if (flock($handle, LOCK_EX)) {
+
+        }
+
+        return array(
+            'status' => 'success',
+            'message' => 'vm_deleted',
+            'date' => time()
+        );
     }
 }

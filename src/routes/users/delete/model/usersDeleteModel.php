@@ -1,7 +1,7 @@
 <?php
 
-use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
+use PHPMailer\PHPMailer\PHPMailer;
 
 class usersDeleteModel
 {
@@ -28,36 +28,6 @@ class usersDeleteModel
                 return array(
                     'status' => 'error',
                     'message' => 'user_not_found',
-                    'date' => time()
-                );
-            }
-        } catch (PDOException $e) {
-            return $e->getMessage();
-        }
-    }
-
-    /**
-     * Method used to delete a user from the DB.
-     * @return array|boolean
-     */
-    private function deleteUser()
-    {
-        try {
-            $req = $this->pdo->prepare("DELETE FROM storagehost_hosting.user WHERE id = :id");
-            $req->bindParam(':id', $this->id);
-            $req->execute();
-
-            if ($req) {
-                // Check if the user exists in the DB
-                return array(
-                    'status' => 'success',
-                    'message' => 'user_deleted',
-                    'date' => time()
-                );
-            } else {
-                return array(
-                    'status' => 'error',
-                    'message' => 'error_while_deleting_user',
                     'date' => time()
                 );
             }
@@ -120,6 +90,36 @@ class usersDeleteModel
             $mail->send();
         } catch (Exception $e) {
             echo "Message could not be sent. Mailer error: {$mail->ErrorInfo}";
+        }
+    }
+
+    /**
+     * Method used to delete a user from the DB.
+     * @return array|boolean
+     */
+    private function deleteUser()
+    {
+        try {
+            $req = $this->pdo->prepare("DELETE FROM storagehost_hosting.user WHERE id = :id");
+            $req->bindParam(':id', $this->id);
+            $req->execute();
+
+            if ($req) {
+                // Check if the user exists in the DB
+                return array(
+                    'status' => 'success',
+                    'message' => 'user_deleted',
+                    'date' => time()
+                );
+            } else {
+                return array(
+                    'status' => 'error',
+                    'message' => 'error_while_deleting_user',
+                    'date' => time()
+                );
+            }
+        } catch (PDOException $e) {
+            return $e->getMessage();
         }
     }
 }

@@ -8,7 +8,6 @@
 
 namespace Users;
 
-use Config;
 use PDO;
 use PDOException;
 use PHPMailer\PHPMailer\Exception;

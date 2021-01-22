@@ -5,7 +5,7 @@ namespace Users;
 
 use DomainException;
 use Firebase\JWT\ExpiredException;
-use \Firebase\JWT\JWT;
+use Firebase\JWT\JWT;
 use InvalidArgumentException;
 use UnexpectedValueException;
 
@@ -51,15 +51,6 @@ class JWTHandler
 
     }
 
-    protected function _errMsg($msg): array
-    {
-        return [
-            "auth" => 0,
-            "message" => $msg
-        ];
-    }
-
-    //DECODING THE TOKEN
     public function _jwt_decode_data($jwt_token): array
     {
         try {
@@ -72,5 +63,15 @@ class JWTHandler
             return $this->_errMsg($e->getMessage());
         }
 
+    }
+
+    //DECODING THE TOKEN
+
+    protected function _errMsg($msg): array
+    {
+        return [
+            "auth" => 0,
+            "message" => $msg
+        ];
     }
 }
