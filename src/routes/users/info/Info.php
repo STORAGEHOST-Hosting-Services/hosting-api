@@ -4,7 +4,7 @@ namespace Users;
 
 use userInfoModel;
 
-require __DIR__."/model/userInfoModel.php";
+require "model/userInfoModel.php";
 
 class Info
 {

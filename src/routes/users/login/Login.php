@@ -7,7 +7,7 @@
 
 namespace Users;
 
-require __DIR__."/model/usersLoginModel.php";
+include "model/usersLoginModel.php";
 
 use PDO;
 

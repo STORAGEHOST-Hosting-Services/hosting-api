@@ -8,9 +8,10 @@
 
 namespace Orders;
 
-require __DIR__."/model/orderModel.php";
+include "model/orderModel.php";
 
 use PDO;
+use Users\usersRegisterModel;
 
 class Order
 {

@@ -6,7 +6,7 @@
 
 namespace Users;
 
-include __DIR__."/model/usersRegisterModel.php";
+include "model/usersRegisterModel.php";
 
 use PDO;
 
